@@ -38,18 +38,6 @@ exchange.
 | `book(slot_id)` | Book a class (id from `list_slots`) |
 | `cancel(slot_id)` | Cancel a booked class |
 
-## Prefer to run your own instance?
-
-```bash
-uv sync
-XPLOR_MCP_BASE_URL=https://your-public-domain \
-  uv run fastmcp run src/xplor_mcp/server.py --transport http --host 0.0.0.0 --port 8000
-```
-
-`XPLOR_MCP_BASE_URL` must be a real public HTTPS URL (OAuth requires it).
-[Tailscale Funnel](https://tailscale.com/kb/1223/funnel) is a free way to
-get one without a static IP or port forwarding.
-
 ## Use the Python client directly, without MCP
 
 ```bash

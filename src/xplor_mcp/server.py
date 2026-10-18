@@ -5,21 +5,28 @@ from __future__ import annotations
 import os
 from collections.abc import Generator
 from contextlib import contextmanager
+from pathlib import Path
 
 from fastmcp import FastMCP
 from fastmcp.server.dependencies import get_access_token
+from mcp.types import Icon
 from starlette.requests import Request
+from starlette.responses import Response
 
 from xplor_mcp.client import XplorClient, XplorError
 from xplor_mcp.oauth import XplorOAuthProvider
 from xplor_mcp.store import device_id, load, save
 
 BASE_URL = os.environ.get("XPLOR_MCP_BASE_URL", "http://127.0.0.1:8000")
+_ICON_PATH = Path(__file__).parent / "static" / "icon.svg"
+_ICON_URL = f"{BASE_URL.rstrip('/')}/favicon.ico"
 
 oauth_provider = XplorOAuthProvider(base_url=BASE_URL)
 mcp = FastMCP(
     "xplor",
     auth=oauth_provider,
+    website_url=BASE_URL,
+    icons=[Icon(src=_ICON_URL, mime_type="image/svg+xml", sizes=["any"])],
     instructions=(
         "Provides access to a member's CrossFit gym account via the Xplor "
         "Active platform. Exposes tools to identify the logged-in member, "
@@ -27,6 +34,11 @@ mcp = FastMCP(
         "cancel a class."
     ),
 )
+
+
+@mcp.custom_route("/favicon.ico", methods=["GET"])
+async def _favicon(request: Request) -> Response:
+    return Response(_ICON_PATH.read_text(), media_type="image/svg+xml")
 
 
 @mcp.custom_route("/xplor/login", methods=["GET"])

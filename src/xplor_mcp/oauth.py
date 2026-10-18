@@ -1,9 +1,13 @@
-"""Single-user OAuth 2.1 provider bridging MCP auth to Xplor's own login.
+"""OAuth 2.1 provider bridging MCP auth to Xplor's own login.
 
 Completing the OAuth authorization flow *is* logging into Xplor: the
 `/authorize` redirect lands on our own email+code form instead of a
-third-party identity provider. All state is in-memory and resets on
-server restart.
+third-party identity provider. Each issued token carries the Xplor
+member's own user id as its `subject`, so tools can look up the right
+member's Xplor tokens instead of a single shared one (see `server.py`).
+Transaction/code/token bookkeeping is in-memory and resets on server
+restart; only registered DCR clients and each member's Xplor tokens are
+persisted to disk (`store.py`).
 """
 
 from __future__ import annotations
@@ -30,7 +34,7 @@ from starlette.responses import PlainTextResponse, RedirectResponse, Response
 from starlette.templating import Jinja2Templates
 
 from xplor_mcp.client import XplorClient
-from xplor_mcp.store import device_id, load_clients, save, save_clients
+from xplor_mcp.store import device_id, load_clients, save, save_client
 
 _templates = Jinja2Templates(directory=str(Path(__file__).parent / "templates"))
 
@@ -73,7 +77,7 @@ class XplorOAuthProvider(OAuthProvider):
 
     async def register_client(self, client_info: OAuthClientInformationFull) -> None:
         self._clients[client_info.client_id] = client_info
-        save_clients(self._clients)
+        save_client(client_info)
 
     # -- authorization: hand off to our Xplor login page -------------------
 
@@ -96,7 +100,9 @@ class XplorOAuthProvider(OAuthProvider):
         self, client: OAuthClientInformationFull, authorization_code: AuthorizationCode
     ) -> OAuthToken:
         del self._auth_codes[authorization_code.code]  # one-time use
-        return self._issue_tokens(client.client_id, authorization_code.scopes)
+        return self._issue_tokens(
+            client.client_id, authorization_code.scopes, authorization_code.subject
+        )
 
     # -- tokens -------------------------------------------------------
 
@@ -121,13 +127,15 @@ class XplorOAuthProvider(OAuthProvider):
         scopes: list[str],
     ) -> OAuthToken:
         del self._refresh_tokens[refresh_token.token]
-        return self._issue_tokens(client.client_id, scopes)
+        return self._issue_tokens(client.client_id, scopes, refresh_token.subject)
 
     async def revoke_token(self, token: AccessToken | RefreshTokenModel) -> None:
         self._access_tokens.pop(token.token, None)
         self._refresh_tokens.pop(token.token, None)
 
-    def _issue_tokens(self, client_id: str, scopes: list[str]) -> OAuthToken:
+    def _issue_tokens(
+        self, client_id: str, scopes: list[str], subject: str | None
+    ) -> OAuthToken:
         access_token = secrets.token_urlsafe(32)
         refresh_token = secrets.token_urlsafe(32)
         self._access_tokens[access_token] = AccessToken(
@@ -135,9 +143,10 @@ class XplorOAuthProvider(OAuthProvider):
             client_id=client_id,
             scopes=scopes,
             expires_at=int(time.time() + ACCESS_TOKEN_TTL),
+            subject=subject,
         )
         self._refresh_tokens[refresh_token] = RefreshTokenModel(
-            token=refresh_token, client_id=client_id, scopes=scopes
+            token=refresh_token, client_id=client_id, scopes=scopes, subject=subject
         )
         return OAuthToken(
             access_token=access_token,
@@ -189,6 +198,7 @@ class XplorOAuthProvider(OAuthProvider):
             code_challenge=pending_auth.params.code_challenge,
             redirect_uri=pending_auth.params.redirect_uri,
             redirect_uri_provided_explicitly=pending_auth.params.redirect_uri_provided_explicitly,
+            subject=tokens.user_id,
         )
         redirect_url = construct_redirect_uri(
             str(pending_auth.params.redirect_uri),

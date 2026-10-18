@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 from xplor_mcp.client import XplorClient
-from xplor_mcp.store import TOKENS_PATH, device_id, save
+from xplor_mcp.store import DB_PATH, device_id, save
 
 
 def main() -> None:
@@ -14,7 +14,7 @@ def main() -> None:
         code = input("Code: ").strip()
         tokens = client.confirm_login_code(request_id, secret, code, email)
         save(tokens)
-    print(f"Logged in (user_id={tokens.user_id}). Tokens saved to {TOKENS_PATH}.")
+    print(f"Logged in (user_id={tokens.user_id}). Tokens saved to {DB_PATH}.")
 
 
 if __name__ == "__main__":

@@ -7,6 +7,7 @@ from collections.abc import Generator
 from contextlib import contextmanager
 
 from fastmcp import FastMCP
+from fastmcp.server.dependencies import get_access_token
 from starlette.requests import Request
 
 from xplor_mcp.client import XplorClient, XplorError
@@ -45,7 +46,11 @@ async def _login_confirm(request: Request):
 
 @contextmanager
 def _session() -> Generator[XplorClient]:
-    tokens = load()
+    access_token = get_access_token()
+    user_id = access_token.subject if access_token else None
+    if user_id is None:
+        raise XplorError("not logged in — complete the OAuth connection flow first")
+    tokens = load(user_id)
     if tokens is None:
         raise XplorError("not logged in — complete the OAuth connection flow first")
     with XplorClient(device_id=device_id()) as client:

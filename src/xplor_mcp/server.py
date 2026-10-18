@@ -47,6 +47,10 @@ def _session() -> Generator[XplorClient]:
             save(client.tokens)  # persist any refreshed access/refresh token
 
 
+def _account_id(client: XplorClient) -> str:
+    return client.me()["accounts"][0]["id"]
+
+
 @mcp.tool
 def whoami() -> str:
     """Return the logged-in user's name and club."""
@@ -54,6 +58,48 @@ def whoami() -> str:
         me = client.me()
     account = me["accounts"][0]
     return f"{me['givenName']} {me['familyName']} — {account['club']['name']}"
+
+
+@mcp.tool
+def list_slots(from_date: str) -> list[dict[str, object]]:
+    """List bookable class slots from `from_date` (YYYY-MM-DD) onward."""
+    with _session() as client:
+        slots = client.list_slots(_account_id(client), from_date)
+    return [
+        {
+            "id": slot.id,
+            "start": slot.start,
+            "end": slot.end,
+            "activity": slot.activity,
+            "location": slot.location,
+            "bookable": slot.bookable,
+            "cancellable": slot.cancellable,
+        }
+        for slot in slots
+    ]
+
+
+@mcp.tool
+def upcoming_bookings() -> list[dict[str, object]]:
+    """List the member's upcoming bookings."""
+    with _session() as client:
+        return client.upcoming_bookings(_account_id(client))
+
+
+@mcp.tool
+def book(slot_id: str) -> str:
+    """Book a class slot by its id, as returned by list_slots."""
+    with _session() as client:
+        client.book(_account_id(client), slot_id)
+    return "booked"
+
+
+@mcp.tool
+def cancel(slot_id: str) -> str:
+    """Cancel a previously booked class slot by its id."""
+    with _session() as client:
+        client.cancel(_account_id(client), slot_id)
+    return "cancelled"
 
 
 def main() -> None:

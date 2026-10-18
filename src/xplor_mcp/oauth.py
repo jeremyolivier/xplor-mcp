@@ -30,7 +30,7 @@ from starlette.responses import PlainTextResponse, RedirectResponse, Response
 from starlette.templating import Jinja2Templates
 
 from xplor_mcp.client import XplorClient
-from xplor_mcp.store import device_id, save
+from xplor_mcp.store import device_id, load_clients, save, save_clients
 
 _templates = Jinja2Templates(directory=str(Path(__file__).parent / "templates"))
 
@@ -59,7 +59,7 @@ class XplorOAuthProvider(OAuthProvider):
             base_url=base_url,
             client_registration_options=ClientRegistrationOptions(enabled=True),
         )
-        self._clients: dict[str, OAuthClientInformationFull] = {}
+        self._clients: dict[str, OAuthClientInformationFull] = load_clients()
         self._pending_auth: dict[str, _PendingAuthorization] = {}
         self._pending_login: dict[str, _PendingXplorLogin] = {}
         self._auth_codes: dict[str, AuthorizationCode] = {}
@@ -73,6 +73,7 @@ class XplorOAuthProvider(OAuthProvider):
 
     async def register_client(self, client_info: OAuthClientInformationFull) -> None:
         self._clients[client_info.client_id] = client_info
+        save_clients(self._clients)
 
     # -- authorization: hand off to our Xplor login page -------------------
 

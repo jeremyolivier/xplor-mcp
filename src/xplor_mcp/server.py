@@ -16,7 +16,18 @@ from xplor_mcp.store import device_id, load, save
 BASE_URL = os.environ.get("XPLOR_MCP_BASE_URL", "http://127.0.0.1:8000")
 
 oauth_provider = XplorOAuthProvider(base_url=BASE_URL)
-mcp = FastMCP("xplor", auth=oauth_provider)
+mcp = FastMCP(
+    "xplor",
+    auth=oauth_provider,
+    instructions=(
+        "Gives access to the user's CrossFit gym account (Xplor Active). "
+        "Use these tools whenever the user mentions their gym, CrossFit, WOD, "
+        "classes, bookings, or slots — no need to say 'xplor' explicitly. "
+        "whoami identifies the member; list_slots finds bookable classes from "
+        "a given date; upcoming_bookings lists what's already booked; book and "
+        "cancel manage a reservation by slot id."
+    ),
+)
 
 
 @mcp.custom_route("/xplor/login", methods=["GET"])

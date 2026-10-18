@@ -11,6 +11,7 @@ from __future__ import annotations
 import secrets
 import time
 from dataclasses import dataclass
+from pathlib import Path
 
 from fastmcp.server.auth.auth import (
     AccessToken,
@@ -25,10 +26,13 @@ from fastmcp.server.auth.auth import (
 from mcp.server.auth.provider import AuthorizationParams, construct_redirect_uri
 from mcp.shared.auth import OAuthToken
 from starlette.requests import Request
-from starlette.responses import HTMLResponse, RedirectResponse
+from starlette.responses import PlainTextResponse, RedirectResponse, Response
+from starlette.templating import Jinja2Templates
 
 from xplor_mcp.client import XplorClient
 from xplor_mcp.store import device_id, save
+
+_templates = Jinja2Templates(directory=str(Path(__file__).parent / "templates"))
 
 ACCESS_TOKEN_TTL = 3600
 AUTH_CODE_TTL = 300
@@ -144,20 +148,22 @@ class XplorOAuthProvider(OAuthProvider):
 
     # -- the Xplor login form itself -----------------------------------
 
-    async def login_page(self, request: Request) -> HTMLResponse:
+    async def login_page(self, request: Request) -> Response:
         txn = request.query_params.get("txn", "")
-        return HTMLResponse(_EMAIL_FORM.format(txn=txn))
+        return _templates.TemplateResponse(request, "login_email.html", {"txn": txn})
 
-    async def login_start(self, request: Request) -> HTMLResponse:
+    async def login_start(self, request: Request) -> Response:
         form = await request.form()
         txn = str(form.get("txn", ""))
         email = str(form.get("email", "")).strip()
         with XplorClient(device_id=device_id()) as client:
             request_id, secret = client.request_login_code(email)
         self._pending_login[txn] = _PendingXplorLogin(request_id, secret, email)
-        return HTMLResponse(_CODE_FORM.format(txn=txn, email=email))
+        return _templates.TemplateResponse(
+            request, "login_code.html", {"txn": txn, "email": email}
+        )
 
-    async def login_confirm(self, request: Request) -> RedirectResponse | HTMLResponse:
+    async def login_confirm(self, request: Request) -> Response:
         form = await request.form()
         txn = str(form.get("txn", ""))
         code = str(form.get("code", "")).strip()
@@ -165,7 +171,7 @@ class XplorOAuthProvider(OAuthProvider):
         pending_auth = self._pending_auth.pop(txn, None)
         pending_login = self._pending_login.pop(txn, None)
         if pending_auth is None or pending_login is None:
-            return HTMLResponse("Expired or unknown login attempt.", status_code=400)
+            return PlainTextResponse("Expired or unknown login attempt.", status_code=400)
 
         with XplorClient(device_id=device_id()) as client:
             tokens = client.confirm_login_code(
@@ -189,28 +195,3 @@ class XplorOAuthProvider(OAuthProvider):
             state=pending_auth.params.state,
         )
         return RedirectResponse(url=redirect_url, status_code=302)
-
-
-_EMAIL_FORM = """\
-<!doctype html><html><body style="font-family: sans-serif; max-width: 400px; margin: 4rem auto;">
-<h2>Connect your Xplor account</h2>
-<form method="post" action="/xplor/login/start">
-  <input type="hidden" name="txn" value="{txn}">
-  <input type="email" name="email" placeholder="you@example.com" required
-         style="width: 100%; padding: 0.5rem; font-size: 1rem;">
-  <button type="submit" style="margin-top: 1rem; padding: 0.5rem 1rem;">Send code</button>
-</form>
-</body></html>
-"""
-
-_CODE_FORM = """\
-<!doctype html><html><body style="font-family: sans-serif; max-width: 400px; margin: 4rem auto;">
-<h2>Enter the code sent to {email}</h2>
-<form method="post" action="/xplor/login/confirm">
-  <input type="hidden" name="txn" value="{txn}">
-  <input type="text" name="code" placeholder="ABC123" required
-         style="width: 100%; padding: 0.5rem; font-size: 1rem;">
-  <button type="submit" style="margin-top: 1rem; padding: 0.5rem 1rem;">Confirm</button>
-</form>
-</body></html>
-"""

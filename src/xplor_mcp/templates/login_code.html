@@ -1,0 +1,12 @@
+{% extends "base.html" %}
+{% block content %}
+  <h1>Check your inbox</h1>
+  <p class="subtitle">Enter the code we sent to {{ email }}.</p>
+  <form method="post" action="/xplor/login/confirm">
+    <input type="hidden" name="txn" value="{{ txn }}">
+    <label for="code">Code</label>
+    <input id="code" type="text" name="code" placeholder="ABC123" required autofocus
+           autocomplete="one-time-code">
+    <button type="submit">Confirm</button>
+  </form>
+{% endblock %}

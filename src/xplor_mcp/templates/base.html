@@ -1,0 +1,98 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>{% block title %}Connect your gym account{% endblock %}</title>
+  <style>
+    :root {
+      color-scheme: light dark;
+      --bg: #f5f5f7;
+      --card: #ffffff;
+      --text: #1d1d1f;
+      --muted: #6e6e73;
+      --accent: #ff5a1f;
+      --accent-hover: #e04f1a;
+      --border: #d7d7db;
+    }
+    @media (prefers-color-scheme: dark) {
+      :root {
+        --bg: #121212;
+        --card: #1e1e1e;
+        --text: #f2f2f2;
+        --muted: #9a9a9e;
+        --border: #3a3a3c;
+      }
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      min-height: 100vh;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      background: var(--bg);
+      color: var(--text);
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+      padding: 1.5rem;
+    }
+    .card {
+      width: 100%;
+      max-width: 380px;
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: 16px;
+      padding: 2.5rem 2rem;
+      box-shadow: 0 8px 30px rgba(0, 0, 0, 0.06);
+    }
+    .card h1 {
+      font-size: 1.3rem;
+      font-weight: 600;
+      margin: 0 0 0.4rem;
+    }
+    .card p.subtitle {
+      color: var(--muted);
+      font-size: 0.9rem;
+      margin: 0 0 1.75rem;
+    }
+    label {
+      display: block;
+      font-size: 0.8rem;
+      font-weight: 600;
+      margin-bottom: 0.4rem;
+      color: var(--muted);
+    }
+    input {
+      width: 100%;
+      padding: 0.7rem 0.85rem;
+      font-size: 1rem;
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      background: transparent;
+      color: var(--text);
+      outline: none;
+      transition: border-color 0.15s ease;
+    }
+    input:focus { border-color: var(--accent); }
+    button {
+      width: 100%;
+      margin-top: 1.5rem;
+      padding: 0.75rem 1rem;
+      font-size: 1rem;
+      font-weight: 600;
+      color: #fff;
+      background: var(--accent);
+      border: none;
+      border-radius: 10px;
+      cursor: pointer;
+      transition: background 0.15s ease;
+    }
+    button:hover { background: var(--accent-hover); }
+  </style>
+</head>
+<body>
+  <div class="card">
+    {% block content %}{% endblock %}
+  </div>
+</body>
+</html>
